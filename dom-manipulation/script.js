@@ -179,6 +179,77 @@ const updateCategoriesAfterAdd = (category) => {
 quotes.push
 populateCategories();
 
+const notifyUser = (message) => {
+    const notification = document.createElement('div');
+    notification.innerText = message;
+    notification.style.background = '#fffae6';
+    notification.style.border = '1px solid #ccc';
+    notification.style.padding = '10px';
+    notification.style.margin = '10px 0';
+    notification.style.color = '#333';
+
+    document.body.prepend(notification);
+    setTimeout(() => notification.remove(), 5000);
+};
+
+//server sync simulation
+
+const SERVER_URL = 'https://jsonplaceholder.tyicode.com/posts'; // mockAPI
+//fetch quotes from 'server'
+
+const fetchQuotesFromServer = async () => {
+    try {
+        const response = await fetch(SERVER_URL);
+        const serverData = await response.json();
+
+        //convert server data into quotes(simulate categories).
+        const serverQuotes = serverData.slice(0, 5).map(post => (post => ({
+            text: post.title,
+            category: 'server'
+        })));
+
+        handleServerSync(serverQuotes);
+    } catch (error) {
+        console.error('error fetching server quotes:', error);
+    }
+
+};
+
+//merge server quotes with local quotes (server wins on conflict)
+
+const handleServerSync = (serverQuotes) => {
+    let updated = false;
+
+    serverQuotes.forEach(serverQuote => {
+        //check if same text exists locally
+        const localMatch = quotes.find(q => q.text === serverQuote.text);
+        if(!localMatch) {
+            //if not found, add server quote
+            quotes.push(serverQuote);
+            updated = true;
+        } else {
+            //conflict resolution: server category overwrites local
+            if(localMatch.category !== serverQuote.category){
+                localMatch.category = serverQuote.category;
+                updated = true;
+            }
+        }
+    });
+    if(updated) {
+        saveQuotes();
+        populateCategories();
+        notifyUser('Quotes synced with server. some updates applieed');
+    }
+};
+//initial fetch on page load
+fetchQuotesFromServer();
+
+//periodic sync every 30 seconds
+
+setInterval(fetchQuotesFromServer, 30000);
+
+
+
 
 
 
